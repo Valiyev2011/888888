@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menda senga aytadigan gapim bor...</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Fon: yurakchalar va yomg'ir -->
+  <div id="hearts" aria-hidden="true"></div>
+  <div id="rain" aria-hidden="true"></div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <!-- Musiqa: music/blue-bird.mp3 faylini o'zingiz qo'ying -->
+  <audio id="music" src="music/blue-bird.mp3" loop preload="auto"></audio>
+  <button id="muteBtn" class="mute" aria-label="Musiqa" hidden>🔊</button>
+
+  <!-- BOSH SAHIFA -->
+  <main class="screen active" id="home">
+    <h1 class="big">🥺 Menda senga aytadigan gapim bor...</h1>
+    <button class="btn start" id="startBtn">Boshlash</button>
+  </main>
+
+  <!-- 1-BO'LIM: SAVOL -->
+  <main class="screen" id="question">
+    <h1 class="huge">Meni kechirasanmi? 🥺</h1>
+    <p class="msg" id="msg"></p>
+    <div class="choices" id="choices">
+      <button class="btn yes" id="yesBtn">Ha, kechiraman ❤️</button>
+      <button class="btn no" id="noBtn">Yo‘q, kechirmayman 😤</button>
+    </div>
+  </main>
+
+  <!-- OXIRGI SAHIFA -->
+  <main class="screen" id="final">
+    <div class="photo" id="photoBox">
+      <img id="photo" src="photo/xotira.jpg" alt="Birgalikdagi xotira">
+      <div class="photo-empty" id="photoEmpty">📸 Birgalikdagi xotira uchun joy</div>
+    </div>
+    <h1 class="big">Rahmat ❤️</h1>
+    <p class="letter">
+      “Men seni majburlamoqchi emasman.<br>
+      Shunchaki kechirim so‘rash men uchun muhim edi. ❤️”
+    </p>
+    <button class="btn restart" id="restartBtn">Boshidan ko‘rish</button>
+  </main>
+
+<style>
+  :root {
+  --bg1: #1b2a5c;
+  --bg2: #4b6cd6;
+  --bg3: #ffb3d1;
+  --blue: #2f6bff;
+  --dark: #23262f;
+  --pink: #ff5f9e;
+  --white: #fff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  color: var(--white);
+  background: linear-gradient(160deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+  background-attachment: fixed;
+  overflow: hidden;
+}
+
+/* ---------- Ekranlar ---------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6rem;
+  padding: 1.5rem;
+  text-align: center;
+  z-index: 5;
+}
+.screen.active { display: flex; animation: appear .7s ease both; }
+
+@keyframes appear {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.big  { font-size: clamp(1.7rem, 6vw, 3rem); line-height: 1.25; text-shadow: 0 4px 20px rgba(0,0,0,.35); }
+.huge { font-size: clamp(2.4rem, 10vw, 5.5rem); line-height: 1.1; text-shadow: 0 6px 28px rgba(0,0,0,.4); }
+
+.msg {
+  min-height: 2.4rem;
+  font-size: clamp(1.05rem, 3.6vw, 1.5rem);
+  max-width: 30rem;
+}
+
+/* ---------- Tugmalar ---------- */
+.btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--white);
+  border: 0;
+  border-radius: 999px;
+  padding: .95rem 2rem;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0,0,0,.3);
+  transition: transform .15s ease, box-shadow .15s ease, opacity .3s;
+  touch-action: manipulation;
+}
+.btn:hover  { transform: translateY(-2px) scale(1.04); }
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.start, .restart { background: var(--pink); }
+.yes { background: var(--blue); }
+.no  { background: var(--dark); }
+
+.choices {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* "Yo'q" tugmasi qochganda */
+.no.runaway {
+  position: fixed;
+  z-index: 50;
+  transition: left .35s cubic-bezier(.3,1.6,.5,1), top .35s cubic-bezier(.3,1.6,.5,1), opacity .3s;
+}
+.no.locked {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(.6);
+}
+
+/* "Ha" tugmasi — yagona tanlov bo'lganda yurak urishi */
+.yes.pulse { animation: beat 1s ease-in-out infinite; }
+@keyframes beat {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+/* ---------- Yurakchalar ---------- */
+#hearts, #rain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.heart {
+  position: absolute;
+  bottom: -40px;
+  animation: floatUp linear forwards;
+  opacity: .8;
+  user-select: none;
+}
+@keyframes floatUp {
+  to { transform: translateY(-115vh) rotate(25deg); opacity: 0; }
+}
+
+/* ---------- Yomg'ir ---------- */
+.drop {
+  position: absolute;
+  top: -30px;
+  width: 2px;
+  height: 22px;
+  background: linear-gradient(transparent, rgba(190,215,255,.9));
+  animation: fall linear forwards;
+}
+@keyframes fall { to { transform: translateY(115vh); } }
+
+body.raining::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 40, .35);
+  z-index: 2;
+  pointer-events: none;
+  animation: appear .5s ease both;
+}
+
+/* ---------- Konfetti ---------- */
+#confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 40;
+}
+
+/* ---------- Oxirgi sahifa ---------- */
+.photo {
+  width: min(78vw, 300px);
+  aspect-ratio: 4 / 5;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 6px solid #fff;
+  box-shadow: 0 14px 40px rgba(0,0,0,.4);
+  transform: rotate(-3deg);
+  background: rgba(255,255,255,.18);
+  position: relative;
+}
+.photo img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.photo.has-img img { display: block; }
+.photo.has-img .photo-empty { display: none; }
+.photo-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px dashed rgba(255,255,255,.7);
+  border-radius: 14px;
+  margin: 10px;
+  inset: 0;
+}
+
+.letter {
+  max-width: 28rem;
+  font-size: clamp(1.05rem, 3.8vw, 1.45rem);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ---------- Musiqa tugmasi ---------- */
+.mute {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 60;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  font-size: 1.3rem;
+  background: rgba(255,255,255,.25);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart, .drop { animation-duration: 0s !important; }
+  .yes.pulse { animation: none; }
+}
+</style>
+<script>
+  (() => {
+  const $ = (id) => document.getElementById(id);
+
+  const screens = { home: $("home"), question: $("question"), final: $("final") };
+  const music = $("music");
+  const muteBtn = $("muteBtn");
+  const noBtn = $("noBtn");
+  const yesBtn = $("yesBtn");
+  const msg = $("msg");
+  const photoBox = $("photoBox");
+  const photo = $("photo");
+
+  const NO_MESSAGES = [
+    "Rostdanmi? 😭 Yana bir marta o‘ylab ko‘r...",
+    "Voy, yana topdingiz 😂 Lekin hali imkon bor...",
+    "Xo‘p... oxirgi marta urinib ko‘ring 😔",
+  ];
+  let noClicks = 0;
+
+  /* ---------- Ekran almashtirish ---------- */
+  function show(name) {
+    Object.values(screens).forEach((s) => s.classList.remove("active"));
+    screens[name].classList.add("active");
+  }
+
+  /* ---------- Musiqa ---------- */
+  function playMusic() {
+    music.volume = 0.6;
+    music.play().then(() => {
+      muteBtn.hidden = false;
+      muteBtn.textContent = "🔊";
+    }).catch(() => {
+      // fayl yo'q yoki brauzer to'sdi — sayt baribir ishlaydi
+    });
+  }
+  muteBtn.addEventListener("click", () => {
+    if (music.paused) { music.play(); muteBtn.textContent = "🔊"; }
+    else { music.pause(); muteBtn.textContent = "🔇"; }
+  });
+
+  /* ---------- Yurakchalar ---------- */
+  const heartsBox = $("hearts");
+  const HEARTS = ["❤️", "💙", "💖", "💕", "💗"];
+  function spawnHeart() {
+    const h = document.createElement("span");
+    h.className = "heart";
+    h.textContent = HEARTS[Math.floor(Math.random() * HEARTS.length)];
+    h.style.left = Math.random() * 100 + "vw";
+    h.style.fontSize = 14 + Math.random() * 26 + "px";
+    const dur = 6 + Math.random() * 6;
+    h.style.animationDuration = dur + "s";
+    heartsBox.appendChild(h);
+    setTimeout(() => h.remove(), dur * 1000);
+  }
+  setInterval(spawnHeart, 450);
+
+  /* ---------- Yomg'ir ---------- */
+  const rainBox = $("rain");
+  let rainTimer = null;
+  function startRain(ms = 3500) {
+    document.body.classList.add("raining");
+    clearInterval(rainTimer);
+    rainTimer = setInterval(() => {
+      for (let i = 0; i < 4; i++) {
+        const d = document.createElement("div");
+        d.className = "drop";
+        d.style.left = Math.random() * 100 + "vw";
+        const dur = 0.7 + Math.random() * 0.6;
+        d.style.animationDuration = dur + "s";
+        rainBox.appendChild(d);
+        setTimeout(() => d.remove(), dur * 1000);
+      }
+    }, 40);
+    setTimeout(stopRain, ms);
+  }
+  function stopRain() {
+    clearInterval(rainTimer);
+    document.body.classList.remove("raining");
+  }
+
+  /* ---------- Konfetti ---------- */
+  const canvas = $("confetti");
+  const ctx = canvas.getContext("2d");
+  let pieces = [];
+  let confettiRunning = false;
+
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function launchConfetti() {
+    const colors = ["#ff5f9e", "#2f6bff", "#ffd54a", "#5ce1a8", "#ffffff", "#b388ff"];
+    for (let i = 0; i < 220; i++) {
+      pieces.push({
+        x: innerWidth / 2,
+        y: innerHeight * 0.6,
+        vx: (Math.random() - 0.5) * 18,
+        vy: -Math.random() * 18 - 6,
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 10,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 0,
+      });
+    }
+    if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(tick); }
+  }
+  function tick() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach((p) => {
+      p.vy += 0.35;
+      p.vx *= 0.99;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      p.life++;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    pieces = pieces.filter((p) => p.y < canvas.height + 40 && p.life < 400);
+    if (pieces.length) requestAnimationFrame(tick);
+    else { confettiRunning = false; ctx.clearRect(0, 0, canvas.width, canvas.height); }
+  }
+
+  /* ---------- "Yo'q" tugmasi qochadi ---------- */
+  function moveNoButton() {
+    noBtn.classList.add("runaway");
+    const w = noBtn.offsetWidth;
+    const h = noBtn.offsetHeight;
+    const pad = 12;
+    const x = pad + Math.random() * Math.max(0, innerWidth - w - pad * 2);
+    const y = pad + Math.random() * Math.max(0, innerHeight - h - pad * 2);
+    noBtn.style.left = x + "px";
+    noBtn.style.top = y + "px";
+  }
+
+  noBtn.addEventListener("click", () => {
+    if (noClicks >= NO_MESSAGES.length) return;
+
+    msg.textContent = NO_MESSAGES[noClicks];
+    noClicks++;
+    startRain();
+
+    if (noClicks < NO_MESSAGES.length) {
+      moveNoButton();
+    } else {
+      // 3-imkoniyatdan keyin: oxirgi marta qochadi va bosilmaydigan bo'ladi
+      moveNoButton();
+      setTimeout(() => {
+        noBtn.classList.add("locked");
+        noBtn.disabled = true;
+        msg.textContent = "Demak, faqat bitta tanlov qoldi 😌❤️";
+        yesBtn.classList.add("pulse");
+      }, 2200);
+    }
+  });
+
+  /* ---------- "Ha" ---------- */
+  yesBtn.addEventListener("click", () => {
+    stopRain();
+    launchConfetti();
+    setTimeout(launchConfetti, 600);
+    setTimeout(() => show("final"), 700);
+  });
+
+  /* ---------- Rasm (bo'lmasa bo'sh joy ko'rinadi) ---------- */
+  photo.addEventListener("load", () => photoBox.classList.add("has-img"));
+  photo.addEventListener("error", () => photoBox.classList.remove("has-img"));
+  if (photo.complete && photo.naturalWidth) photoBox.classList.add("has-img");
+
+  /* ---------- Boshlash / Boshidan ko'rish ---------- */
+  $("startBtn").addEventListener("click", () => {
+    playMusic();
+    show("question");
+  });
+
+  $("restartBtn").addEventListener("click", () => {
+    noClicks = 0;
+    msg.textContent = "";
+    noBtn.disabled = false;
+    noBtn.classList.remove("runaway", "locked");
+    noBtn.style.left = noBtn.style.top = "";
+    yesBtn.classList.remove("pulse");
+    show("home");
+  });
+})();
+</script>
+</body>
+</html>
